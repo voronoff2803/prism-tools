@@ -4,7 +4,7 @@ import re
 
 from mathutils import Vector
 
-from . import exporter, project
+from . import built, exporter, project
 
 # Budgets of a segment on the phone; a guess until a level shows otherwise.
 MAX_TRIANGLES_PER_SEGMENT = 30000
@@ -101,6 +101,18 @@ def _check_segment(c, add):
     for o, m in exporter.segment_objects(c):
         p = o.prism
         if p.kind == 'IGNORE':
+            continue
+        if built.owner(o) is not None:
+            # A part or a joint of an obstacle built here: the obstacle answers for it.
+            if o.type == 'LIGHT':
+                add('WARNING', o.name, "A lamp inside a built obstacle is not in the game: parent it to nothing")
+            continue
+        if built.is_built(o):
+            for problem in built.problems(o):
+                add(*problem)
+            continue
+        if o.type == 'EMPTY' and p.kind == 'JOINT':
+            add('WARNING', o.name, "A joint outside a built obstacle does nothing: parent it to a part of one")
             continue
         if o.type == 'MESH':
             if p.kind in ('BOX', 'COLLIDER'):

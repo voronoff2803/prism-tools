@@ -12,6 +12,7 @@ from xml.sax.saxutils import quoteattr
 import bpy
 from mathutils import Matrix, Vector
 
+from . import built
 from . import mapping as M
 
 ROOT_COLLECTION = "Prism"
@@ -104,7 +105,8 @@ def segment_xml(collection, visual_file):
     groups = {}
     for o, m in objects:
         p = o.prism
-        if p.kind == 'IGNORE':
+        # The parts and joints of an obstacle built here are in its script.
+        if p.kind == 'IGNORE' or built.owner(o) is not None:
             continue
         if o.type == 'LIGHT':
             if o.data.type in ('POINT', 'SPOT') and not o.hide_render:
@@ -154,14 +156,15 @@ def segment_xml(collection, visual_file):
         elif p.kind in ('OBSTACLE', 'POWERUP'):
             pos = M.point_to_game(tuple(m.translation - origin) if m != o.matrix_world or o.parent else
                                   (o.location[0] - origin[0], o.location[1] - origin[1], o.location[2] - origin[2]))
-            attrs = [("type", p.type), ("pos", M.words(pos))]
+            made = p.kind == 'OBSTACLE' and built.is_built(o)
+            attrs = [("type", built.type_name(bpy.context.scene, o) if made else p.type), ("pos", M.words(pos))]
             if not (p.difficulty[0] == 0 and p.difficulty[1] == 1):
                 attrs.append(("difficulty", M.words(p.difficulty)))
             if p.kind == 'OBSTACLE':
                 attrs.append(("rot", _rot_attr(o, m)))
                 if p.mode != 255:
                     attrs.append(("mode", str(p.mode)))
-                for i, param in enumerate(p.params):
+                for i, param in enumerate(() if made else p.params):
                     attrs.append((f"param{i}", param.value))
             lines.append(f"\t<{p.kind.lower()} {_attrs(attrs)}/>")
     head = [("size", size)]
@@ -467,6 +470,10 @@ def files(scene):
         out[f"segments/{c.name}.xml"] = xml
         if meshes:
             out[f"segments/{visual}"] = visual_bytes(meshes)
+        # The scripts of the obstacles built in the scene, and the convex meshes they name.
+        for o, _ in segment_objects(c):
+            if built.is_built(o):
+                out.update(built.build(scene, o)[1])
     p = scene.prism
     out[f"looks/{p.room}.json"] = look_json(scene)
     for m in used_materials():

@@ -1,97 +1,147 @@
 # Prism Tools
 
-Аддон для Blender, в котором собираются уровни игры Prism. Игра идёт рядом в браузере: двигаете объект в Blender — он сразу
-двигается в игре. Работает на Windows, macOS и Linux; кроме Blender и браузера ничего не нужно.
+A Blender add-on for building levels of the game Prism. The game runs beside Blender in a browser: move an object in
+Blender and it moves in the game. Windows, macOS and Linux; nothing but Blender and a browser is needed.
 
-**[Скачать аддон](https://github.com/voronoff2803/prism-tools/releases/latest/download/prism_tools.zip)** ·
-[English](README.en.md) · [Справочник по скриптам](docs/Scripting.md)
+**[Download the add-on](https://github.com/voronoff2803/prism-tools/releases/latest/download/prism_tools.zip)** ·
+[По-русски](README.ru.md) · [Scripting reference](docs/Scripting.md)
 
-![Панель Prism в Blender](docs/panel.png)
+![The Prism panel in Blender](docs/panel.png)
 
-![Та же сцена в игре](docs/game.png)
+## Installing
 
-## Установка
+1. Blender 4.2 or later, and a browser with WebGPU: Chrome or Edge (113+), Firefox (141+), Safari (26+).
+2. Download [`prism_tools.zip`](https://github.com/voronoff2803/prism-tools/releases/latest/download/prism_tools.zip).
+   Do not unpack it.
+3. In Blender: `Edit → Preferences → Get Extensions`, the arrow at the top right → `Install from Disk`, choose the file.
+   Dropping the file onto Blender's window works too.
+4. Save the `.blend` somewhere. Press `N` in the 3D viewport and open the **Prism** tab.
 
-1. Нужны Blender 4.2 или новее и браузер с WebGPU: Chrome или Edge (113+), Firefox (141+), Safari (26+).
-2. Скачайте [`prism_tools.zip`](https://github.com/voronoff2803/prism-tools/releases/latest/download/prism_tools.zip).
-   Распаковывать его не надо.
-3. В Blender: `Edit → Preferences → Get Extensions`, стрелка справа вверху → `Install from Disk`, выберите скачанный файл.
-   Можно и просто перетащить файл в окно Blender.
-4. Сохраните `.blend` в любую папку. В окне 3D нажмите `N` и откройте вкладку **Prism**.
+To update, download the new file and install it over the old one.
 
-Обновление — так же: скачать новый файл и установить поверх.
+## A first level in five minutes
 
-## Первый уровень за пять минут
+1. **Start a room**: a first piece of corridor with a floor, walls, a sun and the game's camera. The cube, lamp and
+   camera Blender opens a new file with are removed.
+2. **Browser** (or `Shift Alt E`): the game opens in the browser. The first time it is fetched, about 110 MB; after that
+   it opens at once and needs no network.
+3. Put the windows side by side. The browser's camera follows Blender's viewport, and edits arrive by themselves.
+4. **Play from here** plays the level from where the viewport is. **Back to the viewport** returns to editing.
 
-1. **Start a room** — появится первый кусок коридора: пол, стены, солнце и камера игры. Куб, лампа и камера, с
-   которыми Blender открывает новый файл, при этом убираются.
-2. **Browser** (или `Shift Alt E`) — игра откроется в браузере. В первый раз она скачивается, около 110 МБ; дальше
-   открывается сразу и работает без сети.
-3. Поставьте окна рядом. Камера в браузере идёт за видом в Blender, любая правка приходит сама.
-4. **Play from here** — уровень играется с того места, где сейчас вид. **Back to the viewport** возвращает к правке.
+## What a level is made of
 
-## Из чего собирается уровень
-
-| Что | Как |
+| What | How |
 |---|---|
-| Коробка | `Shift Alt D`. Пол, стены, ступени: рисуется и сталкивается. Размер — масштабом, вид — материалом. |
-| Препятствие | `Shift Alt F`. Тип выбирается из списка игры (начните печатать), параметры его скрипта подставляются сами — меняйте их во вкладке Object → Prism. |
-| Бонус | `Shift Alt C`. |
-| Любая геометрия | Обычный меш Blender. Во вкладке Object → Prism: **Kind: Visual**. **Physics**: None — только рисуется; Static — стоит и сталкивается; Body — отдельное тело, шары его толкают; Held — стоит, пока не разобьют (стекло в стене). |
-| Материалы | Principled BSDF: цвет, шероховатость, металл, свечение. В панели Prism материала — стекло (матовость, рельеф, толща), лак, бархат, воск, карты цвета и нормалей. |
-| Свет | Одно солнце; точечные лампы, трубки (неон) и прожекторы внутри сегмента. Туман, окружение, отражения — вкладка Scene → Prism. |
-| Кусок коридора | Сегмент — это коллекция с галочкой **Segment** (вкладка Collection) и длиной. **New segment** добавляет следующий, **Lay out segments** ставит их встык. |
-| Готовое из игры | **Import segment** и **Import look**: любой сегмент и любой вид комнаты из уровней игры, по имени — как основа для своего. |
+| A box | `Shift Alt D`. Floors, walls, steps: drawn and collided with. Size by scale, look by material. |
+| An obstacle | `Shift Alt F`. Its type is chosen from the game's list (start typing), and the parameters its script reads are filled in: change them in Object → Prism. |
+| A powerup | `Shift Alt C`. |
+| Any geometry | An ordinary Blender mesh. In Object → Prism: **Kind: Visual**. **Physics**: None is drawn only; Static stands and collides; Body is a body of its own that balls push; Held stands until broken (glass in a wall). |
+| Materials | Principled BSDF: colour, roughness, metal, emission. The material's Prism panel has glass (frost, relief, depth), coat, velvet, wax, colour and normal maps. |
+| Light | One sun; point lamps, tubes (neon) and spots inside a segment. Fog, environment and reflections are in Scene → Prism. |
+| A piece of corridor | A segment is a collection with **Segment** ticked (the Collection tab) and a length. **New segment** adds the next one, **Lay out segments** puts them end to end. |
+| The game's own | **Import segment** and **Import look**: any segment and any room's look of the game's levels, by name, to build on. |
 
-Всё то же есть в меню **Prism** в шапке окна 3D.
+The **Prism** menu in the viewport's header has the same things.
 
-## Геймплей
+## Free forms and glass
 
-- **Правила** — панель **Rules** под Level: шары на старте, цена столкновения, длительность бонусов, скорость шара и
-  другое. Меняются на лету вместе с уровнем.
-- **Скорость.** Комната длится один круг музыки, 32 секунды. Длиннее комната — быстрее камера.
-- **Свои препятствия** — это скрипты на Lua. Положите файл в папку `Content/obstacles/` рядом с `.blend` (например
-  `mine.lua`) и поставьте его через `Shift Alt F`. Пока сцена открыта в браузере, скрипт перечитывается при каждом
-  сохранении, а его ошибки видны в панели Prism. Что скрипт может вызывать — в [справочнике](docs/Scripting.md); скрипты
-  самой игры служат примерами.
+- **Any shape.** `Shift A` → any Blender mesh: after **Start a room** and **New segment** it goes into the segment's
+  collection and shows in the game at once. A mesh outside a segment's collection is not in the game: **Check** says so.
+- **Collision.** A mesh is only drawn by default (Physics: None). **Static** collides as its bounding box. For more
+  than that add boxes that are not drawn: the **Prism** menu → Collider.
+- **Glass.** The material: its Prism panel → **Glass**. Whatever is to break, move or give balls is an obstacle: the
+  next section.
 
-## Проверка и сдача
+## Obstacles of your own, without code
 
-- **Check** показывает, что пойдёт не так в игре (панель Problems). С ошибками уровень не выгружается.
-- **Export** (`Shift Alt R`) пишет уровень в папку `Content` рядом с `.blend`. Сдавать — эту папку или сам `.blend`.
-- `F12` с движком рендера Prism — кадр из игры как картинка (сцена должна быть открыта в браузере).
-- Папку `Content` можно открыть и без Blender: в меню игры на её странице — «Свои уровни…».
+An obstacle is built of ordinary meshes in the scene; the add-on writes its script for the game. An example of every
+kind is [`examples/obstacles.blend`](examples/obstacles.blend): open it and press **Browser**.
 
-## Если вы привыкли к Shatter
+![A crystal, glass on ropes, a rotor and pinned panes in the game](docs/obstacles.png)
 
-| В Shatter | Здесь |
+1. Model the parts: glass is a material with **Glass** ticked, anything else is steel of the material's colour in the game.
+2. Select them and choose **Prism** → **Obstacle from selection**. An Empty appears: it is the obstacle, and it moves,
+   turns and is copied with its parts.
+3. Select a part and give it a **Motion** (Object → Prism, or the Prism tab → Object in the sidebar):
+
+   | Motion | What the part does |
+   |---|---|
+   | Fixed | Stands where it is. Glass breaks and its pieces fall. |
+   | Free | A body of its own: it falls, and hangs on its joints and ropes. |
+   | Animated | Follows Blender's keyframes (`I`: location and rotation). Repeat: loop, there and back, or once; it can wait for the camera to come within a distance. |
+   | Spin | Turns about its own X, Y or Z axis at a given speed. |
+   | Launch | Waits for the camera, then is let go with a push: a speed and a spin. A push of 0 just drops it. |
+
+4. **Joints.** Select a part, put the 3D cursor where it is held, **Prism** → **Pin**, **Hinge**, **Slider** or **Rope**.
+   The joint holds the part to the room; with one more part selected, to that part.
+
+   | Joint | What it holds |
+   |---|---|
+   | Pin | A point of the part: the part swings about it freely. |
+   | Hinge | An axis (the Empty's arrow): the part turns about it only. A door, a pendulum. |
+   | Slider | A direction (the arrow): the part slides along it only. |
+   | Rope | A rope from the point along the arrow to the first wall, floor or ceiling, or of a given length. |
+
+5. **Balls.** The obstacle's Empty has **Gives balls**: what the player gets for breaking all of its glass.
+
+Good to know:
+
+- A part parented to another part (`Ctrl P`) is one body with it: glass in a steel frame, blades on a hub.
+- A shape in the game is always convex. Every loose piece of a mesh is a convex shape of its own, so build what is not
+  convex of several pieces in one mesh, or of several meshes.
+- What cannot be built this way is written as a Lua script (see Gameplay); the script the add-on wrote is in
+  `Content/obstacles/` after **Export**, and is a start for one.
+
+## Gameplay
+
+- **Rules**: the **Rules** panel below Level. Balls at the start, what a crash costs, how long a powerup lasts, the ball's
+  speed and more. They change on the fly with the level.
+- **Speed.** A room lasts one loop of its music, 32 seconds. A longer room means a faster camera.
+- **Obstacles of your own** are Lua scripts. Put a file in `Content/obstacles/` beside the `.blend` (say `mine.lua`) and
+  place it with `Shift Alt F`. While the scene is open in the browser the script is read again whenever it is saved, and
+  its errors show in the Prism panel. What a script may call is in the [reference](docs/Scripting.md); the game's own
+  scripts are the examples.
+
+## Checking and handing over
+
+- **Check** shows what would go wrong in the game (the Problems panel). A level with errors is not exported.
+- **Export** (`Shift Alt R`) writes the level into a `Content` folder beside the `.blend`. Hand over that folder, or the
+  `.blend`.
+- `F12` with the Prism render engine: a frame of the game as a picture (the scene must be open in the browser).
+- The `Content` folder opens without Blender too: **Your levels…** in the menu of the game's page.
+
+## Coming from Shatter
+
+| In Shatter | Here |
 |---|---|
-| Create box · `Shift Alt D` | То же сочетание. Вместо шаблона и тайла — материал Blender. |
-| Create obstacle · `Shift Alt F` | То же сочетание; параметры подставляются из скрипта. |
-| Create powerup · `Shift Alt C` | То же сочетание. |
-| Quick Test на телефоне · `Shift Alt E` | То же сочетание открывает игру в браузере на этом же компьютере; телефон и APK не нужны. |
-| Segment properties в Scene | Длина сегмента — у его коллекции; комната, уровень и музыка — панель Level. |
-| Только коробки | Любые меши, свет, материалы, правила и скрипты. |
+| Create box · `Shift Alt D` | The same keys. A Blender material in place of a template and a tile. |
+| Create obstacle · `Shift Alt F` | The same keys; the parameters come from the script. |
+| Create powerup · `Shift Alt C` | The same keys. |
+| Quick Test on a phone · `Shift Alt E` | The same keys open the game in a browser on this computer: no phone, no APK. |
+| Segment properties in Scene | A segment's length is its collection's; room, level and music are in the Level panel. |
+| Boxes only | Any meshes, lights, materials, rules and scripts. |
 
-## Если что-то не работает
+## When something does not work
 
-- Страница пишет, что не хватает WebGPU — обновите браузер и драйвер видеокарты.
-- Объект есть в Blender, а в игре его нет — он лежит вне коллекции сегмента (**Check** скажет об этом). Перенесите его в
-  коллекцию сегмента.
-- **Browser** или **Export** отказывают — в сообщении названа первая ошибка сцены, остальные в панели **Problems**.
-- В панели Prism красная строка — там написано, чего ждёт игра: нет открытой страницы, сцена не запустилась или игра не
-  скачалась.
-- Игра не скачивается — адрес или папка со сборкой игры задаются в настройках аддона
-  (`Edit → Preferences → Add-ons → Prism Tools`), поле **Web build**.
-- Панель пишет, что игра старее аддона, — по адресу из **Web build** лежит сборка без живого просмотра; нужна новая.
+- The page says WebGPU is missing: update the browser and the graphics driver.
+- An object is in Blender and not in the game: it lies outside a segment's collection (**Check** says so). Move it into
+  the segment's collection.
+- **Browser** or **Export** refuses: the message names the scene's first error, the rest are in the **Problems** panel.
+- A red line in the Prism panel says what the game waits for: no page open, the scene did not start, or the game was not
+  fetched.
+- The game is not fetched: the address or the folder of the game's build is in the add-on's preferences
+  (`Edit → Preferences → Add-ons → Prism Tools`), **Web build**.
+- The panel says the game is older than the add-on: the build at the **Web build** address has no live view; a newer one
+  is needed.
 
-Декали и вода пока не поддерживаются.
+Decals and water are not supported yet.
 
-## Что внутри
+## What is here
 
-- [`prism_tools/`](prism_tools) — исходники аддона; установочный файл собирается из них и лежит в
+- [`prism_tools/`](prism_tools): the add-on's sources; the file to install is made from them and is in
   [Releases](https://github.com/voronoff2803/prism-tools/releases).
-- [`docs/Scripting.md`](docs/Scripting.md) — что может вызывать скрипт комнаты и препятствия.
+- [`docs/Scripting.md`](docs/Scripting.md): what a room's or an obstacle's script may call.
+- [`examples/obstacles.blend`](examples/obstacles.blend): a corridor of obstacles built in Blender, one of each kind.
 
-Аддон распространяется по лицензии GPL-3.0-or-later ([LICENSE](LICENSE)). Сама игра в этот репозиторий не входит: аддон
-берёт её сборку по адресу из своих настроек.
+The add-on is licensed GPL-3.0-or-later ([LICENSE](LICENSE)). The game itself is not in this repository: the add-on takes
+its build from the address in its preferences.

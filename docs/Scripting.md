@@ -39,6 +39,7 @@ To try a script of your own without the repository: put it in the `Content` fold
 | `mgRaycast(x0, y0, z0, x1, y1, z1 [, mask])` | returns hit, x, y, z (1 cm off the surface), nx, ny, nz |
 | `mgGet(key)` | returns game property (string) |
 | `mgSet(key, value)` | sets a game property |
+| `mgDebug(...), mgSpeedMultiplier(f), mgDoorOpened()` | accepted and ignored |
 | `mgGetSplitExtraRoomLength()` | returns extra room length in split screen (grows with the checkpoint, 0...120) |
 | `mgGetString(key, default)` | returns parameter as a string |
 | `mgGetFloat(key, default)` | returns parameter as a number |
@@ -54,6 +55,9 @@ To try a script of your own without the repository: put it in the `Content` fold
 | `mgBoxOverlap(x, y, z, hx, hy, hz)` | returns something overlaps the box (2 cm margin) |
 | `mgObstacle(type, x, y, z [, rx, ry, rz, "key=value", ...])` | places an obstacle |
 | `mgPowerUp(type, x, y, z)` | places a powerup |
+| `mgLength(metres), mgLowPass(amount), mgGravity(factor), mgSetDifficulty(0...1)` |  |
+| `mgMusic(name)` | track music/<name> |
+| `mgParticles(preset)` |  |
 | `mgReverb(wet, size, damping)` |  |
 | `mgEcho(volume, delay, feedback, damping)` |  |
 | `mgFogColor(r, g, b [, ur, ug, ub])` | lower and upper fog colour |
@@ -72,25 +76,60 @@ To try a script of your own without the repository: put it in the `Content` fold
 | `mgHasBoss()` | returns an uncleared "boss*" obstacle is alive in this room |
 | `mgIsClosestBoss()` | returns this obstacle is the nearest uncleared boss |
 | `mgCreateButton(x, y, z)` | returns button |
+| `mgIsButtonDown(button [, edge])` | returns pressed (edge: pressed this update) |
+| `mgIsButtonUp(button [, edge])` | returns not pressed (edge: released this update) |
+| `mgSetButtonDown(button, down)` |  |
 | `mgCameraShake(strength)` | shakes the camera (at most 2) |
 | `mgCreateSound(path)` | returns sound index for mgPlaySound (the file is preloaded) |
 | `mgPlaySound(index [, volume 0...10 [, pitch]])` | plays at the obstacle origin |
 | `mgSmoke(x, y, z, vx, vy, vz)` | smoke particle |
 | `mgLaser(x, y, z, dx, dy, dz)` | a laser beam for this update (call every tick) |
+| `mgBodyDecal(body, tile, w, h [, x, y, z [, rx, ry, rz]])` | a sprite on a body for this update |
 
 ## Bodies, shapes, joints and motion
 
 | Call | What |
 |---|---|
 | `mgCreateBody([x, y, z [, rx, ry, rz]])` | returns body owned by this obstacle |
+| `mgMove(body, x, y, z [, strength [, maxSpeed]])` | drive the body towards a position |
+| `mgRotate(body, rx, ry, rz [, strength [, maxSpeed]])` | drive the body towards a rotation |
+| `mgReleaseMotion(body)` | stop driving the body |
+| `mgGetPos(body)` | returns x, y, z (obstacle-local) |
+| `mgGetRot(body)` | returns rx, ry, rz (obstacle-local) |
+| `mgSetPos(body, x, y, z)` | teleports the body |
+| `mgSetVel(body, vx, vy, vz)` |  |
+| `mgSetAngVel(body, wx, wy, wz)` |  |
+| `mgClonePose(dst, src)` | copies transform and velocities |
+| `mgBodyIsBroken(body)` | returns the body has fractured |
+| `mgBodyContainsPoint(body, x, y, z)` | returns point (world) inside the body |
+| `mgBodyPointToWorld(body, x, y, z)` | returns body-local point in obstacle coordinates |
+| `mgBodyVecToWorld(body, x, y, z)` | returns body-local vector rotated to world |
 | `mgShapeReset()` | default material and scale (the chamfer is kept) |
 | `mgMaterial(name)` | a material from materials.xml |
+| `mgDensity(v), mgFriction(v), mgRestitution(v)` | of the next shapes |
+| `mgRoundness(0...1)` | their normals from faces to smooth |
+| `mgForceLimit(v)` | impulse that breaks the shape (Material.unbreakable = never breaks) |
+| `mgCategory(bits)` | collision category |
+| `mgMask(bits)` | categories it collides with |
+| `mgStatic(mode)` | 0 dynamic, 1 static, 2 no rotation |
 | `mgColor(r, g, b [, a = 1])` |  |
 | `mgTexture(enabled, u0, v0, u1, v1)` | texture rectangle |
 | `mgShapeScale(s) / mgShapeScale(sx, sy, sz)` |  |
 | `mgShapeChamfer(r)` | bevel of the next boxes |
 | `mgHideEdges(hidden)` | no edge lines on the next shapes |
+| `mgCreateBox(body, hx, hy, hz [, x, y, z [, rx, ry, rz]])` | returns shape |
+| `mgCreateCylinder(body, radius, halfLength [, x, y, z [, rx, ry, rz]])` | returns shape |
+| `mgCreateMesh(body, name [, x, y, z [, rx, ry, rz]])` | convex mesh from meshes/<name>.xml |
+| `mgClearShapes(body)` |  |
+| `mgRemoveShape(shape)` |  |
+| `mgTranslateShape(shape, dx, dy, dz [, withPieces])` |  |
+| `mgGetShapeBody(shape)` | returns body |
 | `mgSetShapeColor(shape, r, g, b)` | the shape and every piece cut from it |
+| `mgSetShapeMask(shape, mask [, category])` |  |
+| `mgShapeIsBroken(shape)` | returns the shape has fractured |
 | `mgCreateBallJoint(a, b, x, y, z)` | returns joint |
+| `mgCreateHingeJoint, mgCreateSliderJoint (a, b, x, y, z, ax, ay, az)` | returns joint |
 | `mgCreateRope(a, b, xa, ya, za, xb, yb, zb, slack)` | returns joint |
+| `mgJointMotor(hinge, speed, strength)` |  |
+| `mgGetJointBodies(joint)` | returns a, b |
 | `mgIsConnected(a, b)` | returns the bodies are linked through joints |

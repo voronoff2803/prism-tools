@@ -2,8 +2,9 @@
 import os
 
 import bpy
+from mathutils import Matrix, Vector
 
-from . import catalog, exporter, importer, live, project, validate
+from . import built, catalog, exporter, importer, live, project, validate
 
 _problems = []
 
@@ -147,6 +148,7 @@ class PRISM_OT_new_segment(bpy.types.Operator):
         c.prism.length = self.length
         room = [s for s in exporter.room_segments(context.scene) if s != c]
         c.prism.origin_y = sum(s.prism.length * s.prism.repeat for s in room)
+        _make_active(context, c)
         return {'FINISHED'}
 
 
@@ -189,6 +191,20 @@ class PRISM_OT_import_look(bpy.types.Operator):
         importer.prepare_scene(context.scene)
         importer.import_look(context.scene, data)
         return {'FINISHED'}
+
+
+def _make_active(context, collection):
+    """What Blender adds next (Shift A) goes into this collection: a mesh added beside the segments is not in the game."""
+    def find(layer):
+        if layer.collection == collection:
+            return layer
+        for child in layer.children:
+            found = find(child)
+            if found:
+                return found
+    layer = find(context.view_layer.layer_collection)
+    if layer:
+        context.view_layer.active_layer_collection = layer
 
 
 def _segment_for_new(context):
@@ -259,6 +275,7 @@ class PRISM_OT_start_room(bpy.types.Operator):
             sun.data.energy = 3
             sun.rotation_euler = (0.7, 0.2, 0.5)
         importer.sync_viewport_colors()
+        _make_active(context, c)
         _refresh(scene)
         return {'FINISHED'}
 
@@ -364,6 +381,87 @@ class PRISM_OT_fill_params(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class PRISM_OT_build_obstacle(bpy.types.Operator):
+    bl_idname = "prism.build_obstacle"
+    bl_label = "Obstacle from selection"
+    bl_description = ("The selected meshes become the parts of an obstacle of their own: glass that breaks, things that hang, "
+                      "turn, move by keyframes or are pushed. Each part's Motion and the obstacle's joints are in Object > Prism")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        meshes = [o for o in context.selected_objects if o.type == 'MESH' and built.owner(o) is None]
+        if not meshes:
+            self.report({'ERROR'}, "Select the meshes the obstacle is made of")
+            return {'CANCELLED'}
+        found = exporter.segments(context.scene)
+        segment = next((c for o in meshes for c in o.users_collection if c in found), None) or _segment_for_new(context)
+        if segment is None:
+            self.report({'ERROR'}, "No segment yet: 'Start a room' or 'New segment'")
+            return {'CANCELLED'}
+        # Its origin on the floor under the middle of its parts: the game places and measures it from there.
+        corners = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
+        lo = Vector(min(c[i] for c in corners) for i in range(3))
+        hi = Vector(max(c[i] for c in corners) for i in range(3))
+        empty = bpy.data.objects.new("obstacle", None)
+        empty.empty_display_type = 'PLAIN_AXES'
+        empty.empty_display_size = 0.5
+        empty.prism.kind = 'OBSTACLE'
+        segment.objects.link(empty)
+        empty.location = ((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, min(lo.z, 0))
+        context.view_layer.update()
+        for o in meshes:
+            if o.parent in meshes:
+                continue
+            world = o.matrix_world.copy()
+            o.parent = empty
+            o.matrix_parent_inverse = empty.matrix_world.inverted()
+            o.matrix_basis = world
+            if segment not in o.users_collection:
+                for c in list(o.users_collection):
+                    c.objects.unlink(o)
+                segment.objects.link(o)
+        for o in context.selected_objects:
+            o.select_set(False)
+        empty.select_set(True)
+        context.view_layer.objects.active = empty
+        return {'FINISHED'}
+
+
+class PRISM_OT_add_joint(bpy.types.Operator):
+    bl_idname = "prism.add_joint"
+    bl_label = "Joint"
+    bl_description = ("At the 3D cursor, on the active part of a built obstacle: a pin, a hinge, a slider or a rope. It holds the part "
+                      "to the room, or to the other selected part")
+    bl_options = {'REGISTER', 'UNDO'}
+
+    type: bpy.props.EnumProperty(name="Joint", default='PIN', items=[
+        ('PIN', "Pin", "Holds a point of the part"), ('HINGE', "Hinge", "The part turns about the arrow"),
+        ('SLIDER', "Slider", "The part slides along the arrow"), ('ROPE', "Rope", "Along the arrow to the room")])
+
+    def execute(self, context):
+        part = context.object
+        if part is None or part.type != 'MESH' or built.owner(part) is None:
+            self.report({'ERROR'}, "Make a part of a built obstacle active: the joint holds it ('Obstacle from selection' first)")
+            return {'CANCELLED'}
+        other = next((o for o in context.selected_objects if o is not part and o.type == 'MESH'
+                      and built.owner(o) is built.owner(part) and built.root(o) is not built.root(part)), None)
+        j = bpy.data.objects.new(self.type.lower(), None)
+        j.empty_display_type = 'SPHERE' if self.type == 'PIN' else 'SINGLE_ARROW'
+        j.empty_display_size = 0.08 if self.type == 'PIN' else 0.6
+        j.prism.kind = 'JOINT'
+        j.prism.joint_type = self.type
+        j.prism.joint_to = other
+        (part.users_collection[0] if part.users_collection else context.scene.collection).objects.link(j)
+        j.parent = part
+        j.matrix_parent_inverse = part.matrix_world.inverted()
+        j.matrix_basis = Matrix.Translation(context.scene.cursor.location)
+        for o in context.selected_objects:
+            o.select_set(False)
+        j.select_set(True)
+        context.view_layer.objects.active = j
+        return {'FINISHED'}
+
+
 class PRISM_MT_main(bpy.types.Menu):
     bl_idname = "PRISM_MT_main"
     bl_label = "Prism"
@@ -374,6 +472,10 @@ class PRISM_MT_main(bpy.types.Menu):
         layout.operator("prism.add_box", text="Collider", icon='SHADING_BBOX').collider = True
         layout.operator("prism.add_obstacle", icon='EMPTY_ARROWS')
         layout.operator("prism.add_powerup", icon='SPHERE')
+        layout.separator()
+        layout.operator("prism.build_obstacle", icon='MOD_PHYSICS')
+        for kind, text, icon in (('PIN', "Pin", 'PINNED'), ('HINGE', "Hinge", 'CON_ROTLIKE'), ('SLIDER', "Slider", 'CON_LOCLIKE'), ('ROPE', "Rope", 'CON_SPLINEIK')):
+            layout.operator("prism.add_joint", text=text, icon=icon).type = kind
         layout.separator()
         layout.operator("prism.new_segment", icon='ADD')
         layout.operator("prism.start_room", icon='HOME')
@@ -622,7 +724,56 @@ class PRISM_PT_object(bpy.types.Panel):
             if context.object.data.type == 'POINT':
                 layout.prop(p, "light_tube")
             return
+        o = context.object
+        obstacle = built.owner(o)
+        if obstacle is not None and o.type == 'MESH':
+            # A part of an obstacle built here.
+            body = built.root(o)
+            layout.label(text=f"Part of the obstacle '{obstacle.name}'", icon='MOD_PHYSICS')
+            if body is not o:
+                layout.label(text=f"One body with '{body.name}': it moves as that does", icon='LINKED')
+            else:
+                layout.prop(p, "part_motion")
+                if p.part_motion == 'ANIMATED':
+                    layout.prop(p, "anim_loop")
+                    layout.prop(p, "trigger")
+                    if not built.is_animated(o):
+                        layout.label(text="No keyframes of location or rotation yet", icon='ERROR')
+                elif p.part_motion == 'SPIN':
+                    layout.prop(p, "spin_axis")
+                    layout.prop(p, "spin_speed")
+                elif p.part_motion == 'LAUNCH':
+                    layout.prop(p, "trigger")
+                    layout.prop(p, "push")
+                    layout.prop(p, "push_spin")
+            layout.prop(body.prism, "part_strength")
+            layout.prop(p, "part_shape")
+            layout.prop(body.prism, "part_bevel")
+            row = layout.row(align=True)
+            for kind, text in (('PIN', "Pin"), ('HINGE', "Hinge"), ('SLIDER', "Slider"), ('ROPE', "Rope")):
+                row.operator("prism.add_joint", text=text).type = kind
+            return
+        if obstacle is not None and o.type == 'EMPTY':
+            layout.label(text=f"In the obstacle '{obstacle.name}'", icon='MOD_PHYSICS')
+            if p.kind != 'JOINT':
+                layout.label(text="Kind: Joint makes it a pin, a hinge, a slider or a rope", icon='INFO')
+                layout.prop(p, "kind")
+            if p.kind == 'JOINT':
+                layout.prop(p, "joint_type")
+                layout.prop(p, "joint_to")
+                if p.joint_type == 'ROPE':
+                    layout.prop(p, "joint_length")
+                    layout.prop(p, "joint_slack")
+                if p.joint_type != 'PIN':
+                    layout.label(text="Along the Empty's arrow (its Z axis)", icon='EMPTY_SINGLE_ARROW')
+            return
         layout.prop(p, "kind")
+        if built.is_built(o):
+            layout.label(text=f"Built of its {len(built.parts(o))} parts: select one for its motion", icon='MOD_PHYSICS')
+            layout.prop(p, "balls")
+            layout.prop(p, "difficulty")
+            layout.prop(p, "mode")
+            return
         if p.kind == 'VISUAL':
             layout.prop(p, "two_sided")
             layout.prop(p, "physics")
@@ -640,6 +791,22 @@ class PRISM_PT_object(bpy.types.Panel):
             row = layout.row(align=True)
             row.operator("prism.add_param", icon='ADD')
             row.operator("prism.fill_params", icon='PRESET')
+
+
+class PRISM_PT_object_side(PrismPanel, bpy.types.Panel):
+    """The same in the viewport's sidebar: an obstacle is built there, part by part."""
+    bl_label = "Object"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.object is not None
+
+    def draw(self, context):
+        row = self.layout.row(align=True)
+        row.operator("prism.build_obstacle", icon='MOD_PHYSICS')
+        self.layout.label(text=context.object.name, icon='OBJECT_DATA')
+        PRISM_PT_object.draw(self, context)
 
 
 class PRISM_PT_collection(bpy.types.Panel):
@@ -667,8 +834,8 @@ class PRISM_PT_collection(bpy.types.Panel):
 
 CLASSES = (PRISM_OT_validate, PRISM_OT_export, PRISM_OT_live, PRISM_OT_browser, PRISM_OT_play, PRISM_OT_back_to_edit, PRISM_OT_layout,
            PRISM_OT_new_segment, PRISM_OT_import_segment, PRISM_OT_import_look, PRISM_OT_add_softbox, PRISM_OT_remove_softbox, PRISM_OT_add_camera_lamp, PRISM_OT_remove_camera_lamp,
-           PRISM_OT_add_param, PRISM_OT_remove_param, PRISM_OT_start_room, PRISM_OT_add_box, PRISM_OT_add_obstacle, PRISM_OT_add_powerup,
-           PRISM_OT_fill_params, PRISM_MT_main, PRISM_PT_level, PRISM_PT_rules, PRISM_PT_problems, PRISM_PT_scene, PRISM_PT_material,
+           PRISM_OT_add_param, PRISM_OT_remove_param, PRISM_OT_build_obstacle, PRISM_OT_add_joint, PRISM_OT_start_room, PRISM_OT_add_box, PRISM_OT_add_obstacle, PRISM_OT_add_powerup,
+           PRISM_OT_fill_params, PRISM_MT_main, PRISM_PT_level, PRISM_PT_rules, PRISM_PT_problems, PRISM_PT_object_side, PRISM_PT_scene, PRISM_PT_material,
            PRISM_PT_object, PRISM_PT_collection)
 
 

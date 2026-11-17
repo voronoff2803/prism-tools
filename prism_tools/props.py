@@ -158,7 +158,8 @@ class PrismObject(bpy.types.PropertyGroup):
         ('VISUAL', "Visual", "Drawn, no collision"),
         ('BOX', "Box", "Drawn and collides"),
         ('COLLIDER', "Collider", "Collides, not drawn"),
-        ('OBSTACLE', "Obstacle", "Empty: an obstacle script placed here"),
+        ('OBSTACLE', "Obstacle", "Empty: an obstacle script placed here, or an obstacle built of the Empty's children"),
+        ('JOINT', "Joint", "Empty in a built obstacle, child of the part it holds: a pin, a hinge, a slider or a rope"),
         ('POWERUP', "Powerup", "Empty: a powerup placed here"),
         ('IGNORE', "Ignore", "Not exported: guides and references"),
     ])
@@ -174,6 +175,38 @@ class PrismObject(bpy.types.PropertyGroup):
         ('HELD', "Held", "Stands where it is until it breaks, then its pieces fall: glass in a wall. Still scenes"),
     ], description="What a Visual does in the physics")
     body_group: StringProperty(name="Body group", description="Bodies of one group are one body (a sofa of seat, back and base): empty, a body of its own")
+    # A built obstacle (built.py): the Empty, its parts and its joints.
+    balls: IntProperty(name="Gives balls", default=0, min=0, description="Balls for breaking all of its glass; 0: none")
+    part_motion: EnumProperty(name="Motion", default='FIXED', items=[
+        ('FIXED', "Fixed", "Stands where it is. Glass breaks and its pieces fall"),
+        ('FREE', "Free", "A body of its own from the start: it falls, and hangs on its pins, hinges and ropes"),
+        ('ANIMATED', "Animated", "Follows its keyframes of location and rotation, whatever hits it"),
+        ('SPIN', "Spin", "Turns about one of its own axes"),
+        ('LAUNCH', "Launch", "Stands until the camera is near, then is let go with a push"),
+    ], description="What this part of the obstacle does")
+    part_shape: EnumProperty(name="Shape", default='AUTO', items=[
+        ('AUTO', "Auto", "A box where the mesh is one; otherwise the convex hull of each loose piece"),
+        ('HULL', "Hull", "The convex hull of each loose piece, a box too"),
+    ], description="What the part is in the game: always convex, piece by piece")
+    part_strength: FloatProperty(name="Glass strength", default=0.1, min=0, description="The knock that breaks its glass: 0.1 goes at a ball's touch")
+    part_bevel: FloatProperty(name="Bevel", default=0, min=0, unit='LENGTH', description="Rounded edges of its steel boxes")
+    spin_axis: EnumProperty(name="Axis", default='Z', items=[('X', "X", ""), ('Y', "Y", ""), ('Z', "Z", "")], description="The part's own axis it turns about")
+    spin_speed: FloatProperty(name="Turns a second", default=0.25)
+    anim_loop: EnumProperty(name="Repeat", default='LOOP', items=[
+        ('LOOP', "Loop", "From the start again"), ('PINGPONG', "There and back", ""), ('ONCE', "Once", "Stays at its last pose")])
+    trigger: FloatProperty(name="Starts at", default=0, min=0, unit='LENGTH',
+                           description="The camera this near starts it; 0: an animation runs from when the obstacle appears, a launch waits for 8 m")
+    push: FloatVectorProperty(name="Push", size=3, default=(0, 0, 0), subtype='VELOCITY', description="Its speed when let go, in the obstacle's axes as Blender shows them")
+    push_spin: FloatVectorProperty(name="Push spin", size=3, default=(0, 0, 0), description="Turns a second about the obstacle's axes when let go")
+    joint_type: EnumProperty(name="Joint", default='PIN', items=[
+        ('PIN', "Pin", "Holds a point of the part: it turns about it freely"),
+        ('HINGE', "Hinge", "The part turns about the Empty's Z axis only"),
+        ('SLIDER', "Slider", "The part slides along the Empty's Z axis only"),
+        ('ROPE', "Rope", "From here along the Empty's Z axis to the first wall, floor or ceiling, or as far as its length says"),
+    ])
+    joint_to: PointerProperty(name="To", type=bpy.types.Object, description="The other part it holds to; empty: the room")
+    joint_length: FloatProperty(name="Length", default=0, min=0, unit='LENGTH', description="A rope's length; 0: to the first surface of the room")
+    joint_slack: FloatProperty(name="Slack", default=0, unit='LENGTH', description="A rope this much longer than the way between its ends; below 0 it pulls")
     light_radius: FloatProperty(name="Reach", default=0, min=0, unit='LENGTH', description="Where a lamp ends; 0: where it fades to almost nothing")
     light_tube: FloatProperty(name="Tube length", default=0, min=0, unit='LENGTH',
                               description="A point lamp drawn out into a tube along its own Z (neon): its highlight is a line. 0: a point")
