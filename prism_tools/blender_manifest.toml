@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+
+id = "prism_tools"
+version = "0.2.0"
+name = "Prism Tools"
+tagline = "Prism levels: export, the game in a browser by Blender, F12"
+maintainer = "Prism"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Writes the level files of the Prism project and runs its tools"
+network = "Serves the scene to a browser here and fetches the game"
