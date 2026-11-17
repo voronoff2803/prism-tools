@@ -21,7 +21,8 @@ To update, download the new file and install it over the old one.
 
 ## A first level in five minutes
 
-1. **Start a room**: a first piece of corridor with a floor, walls, a sun and the game's camera.
+1. **Start a room**: a first piece of corridor with a floor, walls, a sun and the game's camera. The cube, lamp and
+   camera Blender opens a new file with are removed.
 2. **Browser** (or `Shift Alt E`): the game opens in the browser. The first time it is fetched, about 110 MB; after that
    it opens at once and needs no network.
 3. Put the windows side by side. The browser's camera follows Blender's viewport, and edits arrive by themselves.
@@ -74,6 +75,9 @@ The **Prism** menu in the viewport's header has the same things.
 ## When something does not work
 
 - The page says WebGPU is missing: update the browser and the graphics driver.
+- An object is in Blender and not in the game: it lies outside a segment's collection (**Check** says so). Move it into
+  the segment's collection.
+- **Browser** or **Export** refuses: the message names the scene's first error, the rest are in the **Problems** panel.
 - A red line in the Prism panel says what the game waits for: no page open, the scene did not start, or the game was not
   fetched.
 - The game is not fetched: the address or the folder of the game's build is in the add-on's preferences

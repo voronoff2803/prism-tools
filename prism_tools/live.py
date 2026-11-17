@@ -22,6 +22,8 @@ _own_checked = 0.0
 _dirty_at = None
 _playing = False
 _shown = None
+# Why the scene's last edit did not go to the game: its first error.
+_refused = None
 OVERLAY = "live"
 DEBOUNCE = 0.25
 TICK = 1 / 30
@@ -135,8 +137,9 @@ def _read(paths):
 
 def _export(scene):
     """To the scratch copy of Content/, or to the pages. Errors stay in the panel; the window keeps what it has."""
-    global _last_files
-    if any(level == 'ERROR' for level, _, _ in validate.check(scene)):
+    global _last_files, _refused
+    _refused = validate.refusal(scene)
+    if _refused:
         return False
     texts = exporter.files(scene)
     if texts == _last_files:
@@ -221,8 +224,9 @@ def start_browser(scene, open_page=True):
     _playing = False
     if is_on():
         return "Already on"
-    if any(l == 'ERROR' for l, _, _ in validate.check(scene)):
-        return "Fix the errors in the Prism panel first"
+    refused = validate.refusal(scene)
+    if refused:
+        return refused
     texts = exporter.files(scene)
     own = _own()
     files = _read({k: v[0] for k, v in own.items()})
@@ -260,8 +264,9 @@ def start(scene, launch=True):
     level = _preview_level(scene)
     _last_files = None
     _last_camera = None
-    if any(l == 'ERROR' for l, _, _ in validate.check(scene)):
-        return "Fix the errors in the Prism panel first"
+    refused = validate.refusal(scene)
+    if refused:
+        return refused
     texts = exporter.files(scene)
     exporter.write(overlay, texts)
     _last_files = texts
@@ -292,7 +297,8 @@ def start(scene, launch=True):
 
 
 def stop():
-    global _socket, _process, _dirty_at, _mode
+    global _socket, _process, _dirty_at, _mode, _refused
+    _refused = None
     if _on_change in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(_on_change)
     if _mode == 'BROWSER':
@@ -358,6 +364,8 @@ def resend_camera():
 
 def problem():
     """What keeps the browser from showing the scene, in a line for the panel; None when nothing does."""
+    if _mode and _refused:
+        return "Edits wait for an error to go: " + _refused
     if _mode != 'BROWSER':
         return None
     r = web.runtime()

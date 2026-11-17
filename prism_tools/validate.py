@@ -15,6 +15,16 @@ MIN_ROOM_LENGTH, MAX_ROOM_LENGTH = 100, 450
 # PowerupType in the game.
 POWERUPS = {"balls", "barrel", "slowmotion", "multiball", "ballfrenzy", "nitroballs", "freebie", "antigravity", "rewind", "shield", "homing"}
 NAME = re.compile(r"^[A-Za-z0-9_\-./]+$")
+OUTSIDE_SHOWN = 5
+
+
+def refusal(scene):
+    """Why the scene cannot go to the game, said with its first error; None when it can."""
+    errors = [(where, what) for level, where, what in check(scene) if level == 'ERROR']
+    if not errors:
+        return None
+    more = f" (and {len(errors) - 1} more in the Problems panel)" if len(errors) > 1 else ""
+    return f"{errors[0][0]}: {errors[0][1]}{more}"
 
 
 def check(scene):
@@ -31,8 +41,14 @@ def check(scene):
     for o in lamps:
         if o.data.type not in ('SUN', 'POINT', 'SPOT'):
             add('ERROR', o.name, f"{o.data.type} lamp: the game has one sun, point lamps (tubes too) and spots")
-        elif o.data.type in ('POINT', 'SPOT') and o not in in_segments:
-            add('ERROR', o.name, "A lamp belongs to a segment: outside one it is not exported")
+    # Nothing goes wrong in the game with these: they are only not there.
+    outside = [o for o in scene.objects if o not in in_segments and o.prism.kind != 'IGNORE' and not o.hide_render
+               and (o.type == 'MESH' or o in lamps and o.data.type in ('POINT', 'SPOT')
+                    or o.type == 'EMPTY' and o.prism.kind in ('OBSTACLE', 'POWERUP'))]
+    for o in outside[:OUTSIDE_SHOWN]:
+        add('WARNING', o.name, "Outside the segments, so not in the game: move it into a segment's collection, or Kind: Ignore")
+    if len(outside) > OUTSIDE_SHOWN:
+        add('WARNING', "Scene", f"{len(outside) - OUTSIDE_SHOWN} more objects outside the segments")
     if len(suns) > 1:
         add('ERROR', suns[1].name, "A second sun: the game has one")
     if not suns and not any(o.data.type in ('POINT', 'SPOT') for o in lamps):

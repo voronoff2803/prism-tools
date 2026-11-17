@@ -32,9 +32,10 @@ class PRISM_OT_export(bpy.types.Operator):
     bl_description = "Write the level into Content/: the repository's, or a Content folder beside the .blend"
 
     def execute(self, context):
-        problems = _refresh(context.scene)
-        if any(p[0] == 'ERROR' for p in problems):
-            self.report({'ERROR'}, "Errors in the Prism panel: nothing written")
+        _refresh(context.scene)
+        refused = validate.refusal(context.scene)
+        if refused:
+            self.report({'ERROR'}, "Nothing written. " + refused)
             return {'CANCELLED'}
         target = project.content()
         if not target:
@@ -206,6 +207,20 @@ def _place(context, obj, collection):
     context.view_layer.objects.active = obj
 
 
+# Blender's new file: name, type, where it stands.
+STARTUP = (("Cube", 'MESH', (0, 0, 0)), ("Light", 'LIGHT', (4.0762, 1.0055, 5.9039)), ("Camera", 'CAMERA', (7.3589, -6.9258, 4.9583)))
+
+
+def _startup_objects(scene):
+    """The objects of Blender's new file that nobody has moved."""
+    found = []
+    for name, kind, at in STARTUP:
+        o = scene.objects.get(name)
+        if o and o.type == kind and o.parent is None and all(abs(a - b) < 1e-3 for a, b in zip(o.location, at)):
+            found.append(o)
+    return found
+
+
 class PRISM_OT_start_room(bpy.types.Operator):
     bl_idname = "prism.start_room"
     bl_label = "Start a room"
@@ -214,10 +229,17 @@ class PRISM_OT_start_room(bpy.types.Operator):
 
     def execute(self, context):
         scene = context.scene
-        importer.prepare_scene(scene)
         if exporter.segments(scene):
+            importer.prepare_scene(scene)
             self.report({'INFO'}, "The scene has segments already")
             return {'CANCELLED'}
+        # What Blender puts in a new file is not the game's: its camera looks from outside the corridor.
+        startup = _startup_objects(scene)
+        for o in startup:
+            bpy.data.objects.remove(o)
+        if startup:
+            self.report({'INFO'}, "Blender's own cube, lamp and camera of a new file were removed")
+        importer.prepare_scene(scene)
         c = bpy.data.collections.new(scene.prism.room + "/01")
         importer.root_collection(scene).children.link(c)
         c.prism.is_segment = True
